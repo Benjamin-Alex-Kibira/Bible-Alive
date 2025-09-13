@@ -1,3 +1,5 @@
+import type { GenerateVideosOperation as GenAIVideosOperation } from "@google/genai";
+
 export interface VerseRef {
   book: string;
   chapter: number;
@@ -45,4 +47,9 @@ export interface BibleVerse {
   chapter: number;
   verse: number;
   text: string;
+  version: string;
+  contextualMeaning?: string;
 }
+
+// Re-export to avoid breaking changes in geminiService.ts if it uses this alias
+export type GenerateVideosOperation = GenAIVideosOperation;

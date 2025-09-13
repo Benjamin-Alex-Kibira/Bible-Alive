@@ -1,5 +1,5 @@
-import { GoogleGenAI, GenerateVideosOperation } from "@google/genai";
-import type { StructuredImagePrompt, VisualPrompt } from '../types';
+import { GoogleGenAI } from "@google/genai";
+import type { StructuredImagePrompt, VisualPrompt, GenerateVideosOperation } from '../types';
 
 // --- Image Generation Template ---
 function formatPrompt(structured: StructuredImagePrompt): string {
