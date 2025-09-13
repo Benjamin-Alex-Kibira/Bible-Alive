@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import type { BibleVerse, GenerateVideosOperation } from '../types';
 import { getVerse } from '../services/bibleService';
@@ -46,7 +47,7 @@ const ExplorerPage: React.FC = () => {
         basePrompt += `\n\nCRITICAL CONTEXT: The visualization MUST be based on the following original meaning and context, not just the translated text: "${verse.contextualMeaning}".`;
     }
 
-    return basePrompt + ` The depiction must be historically and culturally accurate to the time period, deeply reverent, and faithful to the literal meaning. Avoid modern artistic interpretations, anachronisms, or theological symbolism not explicitly present in the text. The goal is a pure, powerful visualization of the scripture as it was written. Style: Cinematic, Epic, Photorealistic.`;
+    return basePrompt + ` The depiction must be historically and culturally accurate to the time period, deeply reverent, and faithful to the literal meaning. Avoid modern artistic interpretations, anachronisms, or theological symbolism not explicitly present in the text. The goal is a pure, powerful visualization of the scripture as it was written. Style: Cinematic, Epic, Photorealistic. Safe for all audiences. Constraints: no nudity, no graphic violence, no modern anachronisms, no text or logos.`;
   };
 
   const handleGenerateImage = async () => {
@@ -139,10 +140,13 @@ const ExplorerPage: React.FC = () => {
             className="w-full bg-deep-indigo border border-gold-accent/50 text-light-parchment rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-gold-accent disabled:opacity-50"
         >
             <option value="KJV">KJV (King James Version)</option>
+            <option value="NIV">NIV (New International Version)</option>
+            <option value="ESV">ESV (English Standard Version)</option>
+            <option value="AMP">AMP (Amplified Bible)</option>
             <option value="Literal & Contextual">Literal & Contextual (For AI Generation)</option>
         </select>
         <p className="text-xs text-light-parchment/60 mt-2">
-            Select 'Literal & Contextual' to provide deeper meaning to the AI for more accurate visualizations.
+            For the most accurate AI visualizations, use the 'Literal & Contextual' version. Other versions are provided for reading.
         </p>
       </div>
 
@@ -159,14 +163,14 @@ const ExplorerPage: React.FC = () => {
             </blockquote>
 
             {verse.contextualMeaning && (
-                <div className="mt-6 border-t border-gold-accent/20 pt-4">
+                <div className="mt-6 bg-black/20 p-4 rounded-lg border-l-4 border-gold-accent/40">
                     <h3 className="text-lg font-bold font-sans text-gold-accent">Original Context & Meaning</h3>
                     <p className="text-md font-sans text-light-parchment/80 mt-2 leading-relaxed">{verse.contextualMeaning}</p>
                 </div>
             )}
             
             {verse.commentary && (
-                <div className="mt-6 border-t border-gold-accent/20 pt-4">
+                <div className="mt-6 bg-black/20 p-4 rounded-lg border-l-4 border-gold-accent/40">
                     <h3 className="text-lg font-bold font-sans text-gold-accent">Commentary ({verse.commentary.source})</h3>
                     <p className="text-md font-sans text-light-parchment/80 mt-2 leading-relaxed whitespace-pre-wrap">{verse.commentary.text}</p>
                 </div>

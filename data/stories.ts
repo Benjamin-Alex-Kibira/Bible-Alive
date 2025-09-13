@@ -17,7 +17,7 @@ export const stories: Story[] = [
         narration: "And God said, 'Let there be light,' and there was light. God saw that the light was good, and he separated the light from the darkness.",
         visualPrompt: {
           id: 'vp-1-1',
-          prompt: "A divine, powerful light piercing through a formless void and darkness, separating into brilliant day and deep night. Abstract, cosmic, and awe-inspiring.",
+          prompt: "A divine, powerful light piercing through a formless void and darkness, separating into brilliant day and deep night. Abstract, cosmic, and awe-inspiring. Safe for all audiences. Constraints: no nudity, no graphic violence, no modern anachronisms, no text or logos.",
           aspectRatio: "16:9",
           styleTags: ["cosmic", "ethereal", "divine light"]
         }
@@ -29,7 +29,7 @@ export const stories: Story[] = [
         narration: 'And God said, "Let there be an expanse in the midst of the waters, and let it separate the waters from the waters."',
         visualPrompt: {
           id: 'vp-1-2',
-          prompt: 'A vast expanse, the sky, being formed, separating primordial waters above from the waters below. A grand architectural act of creation.',
+          prompt: 'A vast expanse, the sky, being formed, separating primordial waters above from the waters below. A grand architectural act of creation. Safe for all audiences. Constraints: no nudity, no graphic violence, no modern anachronisms, no text or logos.',
           aspectRatio: "16:9",
           styleTags: ["elemental", "vast", "creation"]
         }
@@ -51,7 +51,7 @@ export const stories: Story[] = [
         narration: 'Then Moses stretched out his hand over the sea, and all that night the Lord drove the sea back with a strong east wind and turned it into dry land. The waters were divided, and the Israelites went through the sea on dry ground, with a wall of water on their right and on their left.',
         visualPrompt: {
           id: 'vp-2-1',
-          prompt: 'Moses standing on the shore, his staff outstretched towards the Red Sea as a powerful wind begins to churn the waters, which are starting to part, revealing a path of dry land. A wall of water is forming on either side. Dramatic, cinematic, and powerful.',
+          prompt: 'Moses standing on the shore, his staff outstretched towards the Red Sea as a powerful wind begins to churn the waters, which are starting to part, revealing a path of dry land. A wall of water is forming on either side. Dramatic, cinematic, and powerful. Safe for all audiences. Constraints: no nudity, no graphic violence, no modern anachronisms, no text or logos.',
           aspectRatio: "16:9",
           styleTags: ["cinematic", "dramatic", "epic"]
         }
@@ -63,7 +63,7 @@ export const stories: Story[] = [
         narration: 'The Egyptians pursued them, and all Pharaoh’s horses and chariots and horsemen followed them into the sea.',
         visualPrompt: {
           id: 'vp-2-2',
-          prompt: 'Pharaoh\'s army of chariots and horsemen charging down the path of dry land between the towering walls of water, in hot pursuit of the Israelites. A sense of impending doom and urgency.',
+          prompt: 'Pharaoh\'s army of chariots and horsemen charging down the path of dry land between the towering walls of water, in hot pursuit of the Israelites. A sense of impending doom and urgency. Safe for all audiences. Constraints: no nudity, no graphic violence, no modern anachronisms, no text or logos.',
           aspectRatio: "16:9",
           styleTags: ["action", "historical", "tense"]
         }
@@ -85,7 +85,7 @@ export const stories: Story[] = [
         narration: 'While they were there, the time came for the baby to be born, and she gave birth to her firstborn, a son. She wrapped him in cloths and placed him in a manger, because there was no guest room available for them.',
         visualPrompt: {
           id: 'vp-3-1',
-          prompt: 'A humble, quiet stable in Bethlehem at night. Mary gently holds the newborn Jesus, wrapped in cloths, while Joseph looks on with reverence. The scene is lit by a single, warm lantern and a divine glow from the child. Peaceful, serene, and holy.',
+          prompt: 'A humble, quiet stable in Bethlehem at night. Mary gently holds the newborn Jesus, wrapped in cloths, while Joseph looks on with reverence. The scene is lit by a single, warm lantern and a divine glow from the child. Peaceful, serene, and holy. Safe for all audiences. Constraints: no nudity, no graphic violence, no modern anachronisms, no text or logos.',
           aspectRatio: "4:3",
           styleTags: ["serene", "holy", "renaissance painting"]
         }
@@ -97,7 +97,7 @@ export const stories: Story[] = [
         narration: 'An angel of the Lord appeared to them, and the glory of the Lord shone around them, and they were terrified. But the angel said to them, "Do not be afraid. I bring you good news that will cause great joy for all the people."',
         visualPrompt: {
           id: 'vp-3-2',
-          prompt: 'On a dark hillside outside Bethlehem, a group of shepherds look up in awe and fear as a brilliant angel appears in the night sky, surrounded by a radiant, divine light. A flock of sheep are scattered around them.',
+          prompt: 'On a dark hillside outside Bethlehem, a group of shepherds look up in awe and fear as a brilliant angel appears in the night sky, surrounded by a radiant, divine light. A flock of sheep are scattered around them. Safe for all audiences. Constraints: no nudity, no graphic violence, no modern anachronisms, no text or logos.',
           aspectRatio: "16:9",
           styleTags: ["divine", "awe-inspiring", "night"]
         }

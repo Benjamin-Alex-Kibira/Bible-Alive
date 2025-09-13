@@ -47,28 +47,37 @@ export const getVerseCount = (book: string, chapter: number): number => {
 type BibleData = Record<string, Record<string, Record<number, Record<number, { text: string; contextualMeaning?: string; commentary?: { source: string; text: string } }>>>>;
 
 const generateFullBibleData = (): BibleData => {
-    const data: BibleData = { "KJV": {}, "Literal & Contextual": {} };
-    for (const book in bibleStructure) {
-        data["KJV"][book] = {};
-        data["Literal & Contextual"][book] = {};
-        for (const chapter of bibleStructure[book]) {
-            data["KJV"][book][chapter] = {};
-            data["Literal & Contextual"][book][chapter] = {};
-            const verseCount = getVerseCount(book, chapter);
-            for (let verse = 1; verse <= verseCount; verse++) {
-                const placeholderText = `This is the placeholder text for ${book} ${chapter}:${verse} (KJV).`;
-                data["KJV"][book][chapter][verse] = { text: placeholderText };
+    const versions = ["KJV", "NIV", "ESV", "AMP", "Literal & Contextual"];
+    const data: BibleData = {};
 
-                const placeholderContext = `This is the mock contextual meaning for ${book} ${chapter}:${verse}. It explains the original Hebrew/Greek, cultural context, and literary significance to guide AI generation.`;
-                 data["Literal & Contextual"][book][chapter][verse] = {
-                    text: `This is the placeholder text for ${book} ${chapter}:${verse} (Literal).`,
-                    contextualMeaning: placeholderContext
-                };
+    versions.forEach(version => {
+        data[version] = {};
+    });
+
+    for (const book in bibleStructure) {
+        for (const version of versions) {
+            data[version][book] = {};
+            for (const chapter of bibleStructure[book]) {
+                data[version][book][chapter] = {};
+                const verseCount = getVerseCount(book, chapter);
+                for (let verse = 1; verse <= verseCount; verse++) {
+                    if (version === "Literal & Contextual") {
+                        const placeholderContext = `This is the mock contextual meaning for ${book} ${chapter}:${verse}. It explains the original Hebrew/Greek, cultural context, and literary significance to guide AI generation.`;
+                        data[version][book][chapter][verse] = {
+                            text: `This is the placeholder text for ${book} ${chapter}:${verse} (${version}).`,
+                            contextualMeaning: placeholderContext
+                        };
+                    } else {
+                        const placeholderText = `This is the placeholder text for ${book} ${chapter}:${verse} (${version}).`;
+                        data[version][book][chapter][verse] = { text: placeholderText };
+                    }
+                }
             }
         }
     }
     return data;
 };
+
 
 export const bibleData: BibleData = generateFullBibleData();
 
@@ -106,16 +115,26 @@ for (const book in specificVerses) {
     for (const chapter in specificVerses[book]) {
         for (const verse in specificVerses[book][chapter]) {
             const verseData = specificVerses[book][chapter][verse];
-            const chapNum = parseInt(chapter);
-            const verseNum = parseInt(verse);
-            // KJV just gets the text
-            bibleData["KJV"][book][chapNum][verseNum] = { text: verseData.text };
-            // Literal & Contextual gets everything
-            bibleData["Literal & Contextual"][book][chapNum][verseNum] = {
-                text: verseData.text, // In a real app, this could be a more literal translation
-                contextualMeaning: verseData.contextualMeaning,
-                commentary: verseData.commentary
-            };
+            const chapNum = parseInt(chapter, 10);
+            const verseNum = parseInt(verse, 10);
+
+            const kjvVerse = bibleData["KJV"]?.[book]?.[chapNum]?.[verseNum];
+            if (kjvVerse) {
+                kjvVerse.text = verseData.text;
+            }
+            
+            const litVerse = bibleData["Literal & Contextual"]?.[book]?.[chapNum]?.[verseNum];
+            if (litVerse) {
+                // Merge specific data, preserving existing generated data (like contextual meaning)
+                // if the specific data doesn't provide it.
+                litVerse.text = verseData.text; // Always update the text to be the specific one.
+                if (verseData.contextualMeaning !== undefined) {
+                    litVerse.contextualMeaning = verseData.contextualMeaning;
+                }
+                if (verseData.commentary !== undefined) {
+                    litVerse.commentary = verseData.commentary;
+                }
+            }
         }
     }
 }
