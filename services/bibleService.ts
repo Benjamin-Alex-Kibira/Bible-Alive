@@ -1,4 +1,4 @@
-import { bibleData, allBookNames } from '../data/bible';
+import { bibleData, allBookNames, bibleStructure, getVerseCount } from '../data/bible';
 import type { BibleVerse } from '../types';
 
 export const getVerse = (book: string, chapter: number, verse: number, version: string): Promise<BibleVerse | null> => {
@@ -23,6 +23,7 @@ export const getVerse = (book: string, chapter: number, verse: number, version: 
               text: verseData.text,
               version,
               contextualMeaning: verseData.contextualMeaning,
+              commentary: verseData.commentary,
             });
             return;
           }
@@ -39,4 +40,13 @@ export const getAvailableBooks = (): Promise<string[]> => {
             resolve(allBookNames);
         }, 100);
     });
+};
+
+export const getChaptersForBook = (book: string): number[] => {
+    return bibleStructure[book] || [];
+};
+
+export const getVersesForChapter = (book: string, chapter: number): number[] => {
+    const verseCount = getVerseCount(book, chapter);
+    return Array.from({ length: verseCount }, (_, i) => i + 1);
 };

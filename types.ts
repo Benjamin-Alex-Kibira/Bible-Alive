@@ -49,6 +49,10 @@ export interface BibleVerse {
   text: string;
   version: string;
   contextualMeaning?: string;
+  commentary?: {
+    source: string;
+    text: string;
+  };
 }
 
 // Re-export to avoid breaking changes in geminiService.ts if it uses this alias

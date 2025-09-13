@@ -153,15 +153,22 @@ const ExplorerPage: React.FC = () => {
         {error && <p className="text-center text-red-400 bg-red-900/20 p-4 rounded-lg">{error}</p>}
         {verse && (
           <div className="bg-deep-indigo/50 p-6 md:p-8 rounded-lg shadow-lg border border-gold-accent/20 transition-opacity duration-500 animate-fadeIn">
-            <h2 className="text-2xl font-serif text-gold-accent">{`${verse.book} ${verse.chapter}:${verse.verse}`} <span className="text-lg text-light-parchment/70">(${verse.version})</span></h2>
-            <p className="text-xl font-serif italic text-light-parchment/90 mt-4 leading-relaxed">
+            <h2 className="text-2xl font-serif text-gold-accent">{`${verse.book} ${verse.chapter}:${verse.verse}`} <span className="text-lg text-light-parchment/70">({verse.version})</span></h2>
+            <blockquote className="text-xl font-serif italic text-light-parchment/90 mt-4 leading-relaxed border-l-4 border-gold-accent/50 pl-4">
               "{verse.text}"
-            </p>
+            </blockquote>
 
             {verse.contextualMeaning && (
                 <div className="mt-6 border-t border-gold-accent/20 pt-4">
                     <h3 className="text-lg font-bold font-sans text-gold-accent">Original Context & Meaning</h3>
                     <p className="text-md font-sans text-light-parchment/80 mt-2 leading-relaxed">{verse.contextualMeaning}</p>
+                </div>
+            )}
+            
+            {verse.commentary && (
+                <div className="mt-6 border-t border-gold-accent/20 pt-4">
+                    <h3 className="text-lg font-bold font-sans text-gold-accent">Commentary ({verse.commentary.source})</h3>
+                    <p className="text-md font-sans text-light-parchment/80 mt-2 leading-relaxed whitespace-pre-wrap">{verse.commentary.text}</p>
                 </div>
             )}
 

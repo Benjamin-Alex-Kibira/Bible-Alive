@@ -2,7 +2,7 @@
 // This mock structure simulates a full Bible with multiple versions.
 
 // Structure of the Bible: Book -> Number of Chapters
-const bibleStructure: Record<string, number[]> = {
+export const bibleStructure: Record<string, number[]> = {
   "Genesis": Array.from({ length: 50 }, (_, i) => i + 1), "Exodus": Array.from({ length: 40 }, (_, i) => i + 1),
   "Leviticus": Array.from({ length: 27 }, (_, i) => i + 1), "Numbers": Array.from({ length: 36 }, (_, i) => i + 1),
   "Deuteronomy": Array.from({ length: 34 }, (_, i) => i + 1), "Joshua": Array.from({ length: 24 }, (_, i) => i + 1),
@@ -39,12 +39,12 @@ const bibleStructure: Record<string, number[]> = {
 };
 
 // A very rough approximation of verses per chapter
-const getVerseCount = (book: string, chapter: number): number => {
+export const getVerseCount = (book: string, chapter: number): number => {
     if (book === "Psalms" && chapter === 119) return 176;
     return 25 + ( (chapter * 3 + book.length) % 20); // Pseudo-random verse count
 }
 
-type BibleData = Record<string, Record<string, Record<number, Record<number, { text: string; contextualMeaning?: string }>>>>;
+type BibleData = Record<string, Record<string, Record<number, Record<number, { text: string; contextualMeaning?: string; commentary?: { source: string; text: string } }>>>>;
 
 const generateFullBibleData = (): BibleData => {
     const data: BibleData = { "KJV": {}, "Literal & Contextual": {} };
@@ -73,30 +73,51 @@ const generateFullBibleData = (): BibleData => {
 export const bibleData: BibleData = generateFullBibleData();
 
 // --- Merge specific, hand-written verses back into the generated data ---
-// FIX: Add an explicit type to help TypeScript understand the structure of specificVerses
-// and prevent incorrect type inference that causes errors in the for...in loop.
-const specificVerses: Record<string, Record<string, Record<string, string>>> = {
-  "Genesis": { 1: { 1: "In the beginning God created the heavens and the earth.", 2: "Now the earth was formless and empty, darkness was over the surface of the deep, and the Spirit of God was hovering over the waters.", 3: "And God said, “Let there be light,” and there was light.", 4: "God saw that the light was good, and he separated the light from the darkness.", 5: "God called the light “day,” and the darkness he called “night.” And there was evening, and there was morning—the first day." } },
-  "Exodus": { 14: { 21: "Then Moses stretched out his hand over the sea, and all that night the Lord drove the sea back with a strong east wind and turned it into dry land.", 22: "The waters were divided, and the Israelites went through the sea on dry ground, with a wall of water on their right and on their left.", 23: "The Egyptians pursued them, and all Pharaoh’s horses and chariots and horsemen followed them into the sea." } },
-  "Luke": { 2: { 6: "While they were there, the time came for the baby to be born,", 7: "and she gave birth to her firstborn, a son. She wrapped him in cloths and placed him in a manger, because there was no guest room available for them.", 8: "And there were shepherds living out in the fields nearby, keeping watch over their flocks at night.", 9: "An angel of the Lord appeared to them, and the glory of the Lord shone around them, and they were terrified.", 10: "But the angel said to them, “Do not be afraid. I bring you good news that will cause great joy for all the people." } },
-  "John": { 1: { 1: "In the beginning was the Word, and the Word was with God, and the Word was God.", 2: "He was with God in the beginning.", 3: "Through him all things were made; without him nothing was made that has been made.", 4: "In him was life, and that life was the light of all mankind.", 5: "The light shines in the darkness, and the darkness has not overcome it." } },
-  "Revelation": { 3: { 8: "I know your deeds. See, I have placed before you an open door that no one can shut. I know that you have little strength, yet you have kept my word and have not denied my name." } }
+const specificVerses: Record<string, Record<string, Record<string, any>>> = {
+  "Genesis": { 1: { 1: { text: "In the beginning God created the heavens and the earth." }}},
+  "Exodus": { 14: { 21: { text: "Then Moses stretched out his hand over the sea, and all that night the Lord drove the sea back with a strong east wind and turned it into dry land." }}},
+  "Luke": { 2: { 7: { text: "and she gave birth to her firstborn, a son. She wrapped him in cloths and placed him in a manger, because there was no guest room available for them." }}},
+  "John": { 1: { 1: { text: "In the beginning was the Word, and the Word was with God, and the Word was God." }}},
+  "Revelation": {
+    1: {
+      9: {
+        text: "I, John, your brother and companion in the suffering and kingdom and patient endurance that are ours in Jesus, was on the island of Patmos because of the word of God and the testimony of Jesus.",
+        contextualMeaning: "This verse establishes the author (Apostle John), his circumstances (exiled to Patmos, a Roman penal colony, for his faith), and his solidarity with his audience ('your brother and companion in suffering'). The core idea is faithfulness amidst persecution. The vision that follows is a divine revelation given to him in this state of endurance.",
+        commentary: {
+            source: "John Gill's Exposition",
+            text: "He describes himself by his name, John, a name common to many, but well known to these churches... he calls himself their brother, not in a natural, but in a spiritual relation... also their companion in tribulation; for as they had tribulation in the world, so had he... and particularly he was in the isle that is called Patmos; which is one of the islands of the Sporades, in the Icarian sea..."
+        }
+      }
+    },
+    3: {
+      8: {
+        text: "I know your deeds. See, I have placed before you an open door that no one can shut. I know that you have little strength, yet you have kept my word and have not denied my name.",
+        contextualMeaning: "Spoken to the church in Philadelphia, this verse is a promise of divine opportunity. The 'open door' in this cultural context signifies an unhindered chance to evangelize and spread the Gospel. Despite the church's 'little strength' (likely meaning small numbers or lack of political influence), their faithfulness is rewarded with a divine commission that no human authority can revoke.",
+        commentary: {
+            source: "Matthew Henry's Commentary",
+            text: "The church of Philadelphia is commended. Though this church was not in a place of much wealth, power, and influence, yet they had kept God's word. Their works were known and approved. Christ puts the keys of the house of David in his hand, the government of the church. He now gives a promise of perseverance. He sets before them an open door of opportunity, both for the preaching of the gospel and for their own entrance into heaven, a door that none can shut."
+        }
+      }
+    }
+  }
 };
 
-// FIX: The loops are simplified by removing complex and incorrect type assertions,
-// which is possible now that `specificVerses` has an explicit type.
 for (const book in specificVerses) {
     for (const chapter in specificVerses[book]) {
         for (const verse in specificVerses[book][chapter]) {
-            const text = specificVerses[book][chapter][verse];
-            bibleData["KJV"][book][parseInt(chapter)][parseInt(verse)] = { text };
-            bibleData["Literal & Contextual"][book][parseInt(chapter)][parseInt(verse)] = {
-                text,
-                contextualMeaning: `For ${book} ${chapter}:${verse}, the original text emphasizes [mock detail, e.g., the continuous nature of an action]. This suggests a powerful, ongoing divine presence rather than a single event. The cultural context of an 'open door' in Revelation refers to an opportunity for mission and witness that is divinely granted and cannot be thwarted by human opposition.`
+            const verseData = specificVerses[book][chapter][verse];
+            const chapNum = parseInt(chapter);
+            const verseNum = parseInt(verse);
+            // KJV just gets the text
+            bibleData["KJV"][book][chapNum][verseNum] = { text: verseData.text };
+            // Literal & Contextual gets everything
+            bibleData["Literal & Contextual"][book][chapNum][verseNum] = {
+                text: verseData.text, // In a real app, this could be a more literal translation
+                contextualMeaning: verseData.contextualMeaning,
+                commentary: verseData.commentary
             };
         }
     }
 }
-
 
 export const allBookNames = Object.keys(bibleStructure);
