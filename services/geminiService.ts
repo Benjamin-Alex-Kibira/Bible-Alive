@@ -1,5 +1,4 @@
-
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, GenerateVideosOperation } from "@google/genai";
 import type { StructuredImagePrompt, VisualPrompt } from '../types';
 
 // --- Image Generation Template ---
@@ -8,12 +7,16 @@ function formatPrompt(structured: StructuredImagePrompt): string {
 }
 
 // --- Adapter Interface ---
-interface ImageGenerationAdapter {
+interface AiAdapter {
   generateImage(visualPrompt: VisualPrompt): Promise<string>;
+  startVideoGeneration(prompt: string): Promise<GenerateVideosOperation>;
+  getVideosOperation(operation: GenerateVideosOperation): Promise<GenerateVideosOperation>;
 }
 
 // --- Mock Adapter ---
-class MockAdapter implements ImageGenerationAdapter {
+class MockAdapter implements AiAdapter {
+  private mockVideoOperations: Record<string, { status: string; calls: number }> = {};
+
   async generateImage(visualPrompt: VisualPrompt): Promise<string> {
     console.log("Using Mock Adapter for image generation. Prompt:", visualPrompt.prompt);
     const aspectRatios: { [key: string]: string } = {
@@ -23,16 +26,46 @@ class MockAdapter implements ImageGenerationAdapter {
     };
     const ratio = aspectRatios[visualPrompt.aspectRatio || "16:9"] || "1280/720";
     
-    // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Return a placeholder image URL
     return `https://picsum.photos/${ratio}?random=${Math.random()}`;
+  }
+
+  async startVideoGeneration(prompt: string): Promise<GenerateVideosOperation> {
+    console.log("Using Mock Adapter to start video generation. Prompt:", prompt);
+    await new Promise(resolve => setTimeout(resolve, 500));
+    const operationId = `mock-op-${Date.now()}`;
+    this.mockVideoOperations[operationId] = { status: "PROCESSING", calls: 0 };
+    // FIX: Cast to unknown first because GenerateVideosOperation is not a simple object.
+    return { name: operationId, done: false } as unknown as GenerateVideosOperation;
+  }
+
+  async getVideosOperation(operation: GenerateVideosOperation): Promise<GenerateVideosOperation> {
+    console.log("Using Mock Adapter to check video status.");
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    const opDetails = this.mockVideoOperations[operation.name];
+    if (!opDetails) throw new Error("Mock operation not found");
+
+    opDetails.calls++;
+    if (opDetails.calls < 3) {
+      // FIX: Cast to unknown first to satisfy GenerateVideosOperation type for mock response.
+      return { name: operation.name, done: false, metadata: { state: "PROCESSING", progressPercent: opDetails.calls * 33 } } as unknown as GenerateVideosOperation;
+    } else {
+      // FIX: Cast to unknown first to satisfy GenerateVideosOperation type for mock response.
+      return {
+        name: operation.name,
+        done: true,
+        response: {
+          generatedVideos: [{
+            video: { uri: 'https://storage.googleapis.com/web-dev-assets/video-api-demo/flowers.mp4' }
+          }]
+        }
+      } as unknown as GenerateVideosOperation;
+    }
   }
 }
 
 // --- Gemini Adapter ---
-class GeminiAdapter implements ImageGenerationAdapter {
+class GeminiAdapter implements AiAdapter {
   private ai: GoogleGenAI;
 
   constructor() {
@@ -63,16 +96,28 @@ class GeminiAdapter implements ImageGenerationAdapter {
       }
     } catch (error) {
       console.error("Error generating image with Gemini:", error);
-      // Fallback to a placeholder or error image
       return 'https://picsum.photos/1280/720?grayscale';
     }
   }
-}
 
+  async startVideoGeneration(prompt: string): Promise<GenerateVideosOperation> {
+    console.log("Using Gemini Adapter to start video generation.");
+    return this.ai.models.generateVideos({
+      model: 'veo-2.0-generate-001',
+      prompt: prompt,
+      config: { numberOfVideos: 1 }
+    });
+  }
+
+  async getVideosOperation(operation: GenerateVideosOperation): Promise<GenerateVideosOperation> {
+    console.log("Using Gemini Adapter to check video status.");
+    return this.ai.operations.getVideosOperation({ operation: operation });
+  }
+}
 
 // --- Service Configuration ---
 const useMock = !process.env.API_KEY; 
-let adapter: ImageGenerationAdapter;
+let adapter: AiAdapter;
 
 if (useMock) {
   console.log("Bible Stories Alive is running in MOCK mode. No real API calls will be made.");
@@ -89,3 +134,11 @@ if (useMock) {
 export const generateImage = (visualPrompt: VisualPrompt): Promise<string> => {
   return adapter.generateImage(visualPrompt);
 };
+
+export const startVideoGeneration = (prompt: string): Promise<GenerateVideosOperation> => {
+  return adapter.startVideoGeneration(prompt);
+}
+
+export const getVideosOperation = (operation: GenerateVideosOperation): Promise<GenerateVideosOperation> => {
+  return adapter.getVideosOperation(operation);
+}

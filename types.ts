@@ -1,4 +1,3 @@
-
 export interface VerseRef {
   book: string;
   chapter: number;
@@ -39,4 +38,11 @@ export interface StructuredImagePrompt {
     camera: string;
     lighting: string;
     composition: string;
+}
+
+export interface BibleVerse {
+  book: string;
+  chapter: number;
+  verse: number;
+  text: string;
 }
