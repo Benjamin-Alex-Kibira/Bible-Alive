@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getStoryBySlug, getStories } from '../services/storyService';
 import type { Story } from '../types';
@@ -13,11 +13,13 @@ const StoryPage: React.FC = () => {
   const [allStories, setAllStories] = useState<Story[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isImmersiveMode, setIsImmersiveMode] = useState<boolean>(false);
+  const [videoUrls, setVideoUrls] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const fetchStoryData = async () => {
       if (!slug) return;
       setIsLoading(true);
+      setVideoUrls({}); // Reset videos when story changes
 
       const [fetchedStory, allFetchedStories] = await Promise.all([
         getStoryBySlug(slug),
@@ -30,6 +32,10 @@ const StoryPage: React.FC = () => {
     };
     fetchStoryData();
   }, [slug]);
+
+  const handleVideoGenerated = useCallback((sceneId: string, url: string) => {
+    setVideoUrls(prev => ({ ...prev, [sceneId]: url }));
+  }, []);
 
   if (isLoading) {
     return <div className="flex justify-center items-center h-64"><Spinner /></div>;
@@ -72,13 +78,22 @@ const StoryPage: React.FC = () => {
 
         <div className="max-w-4xl mx-auto">
           {story.scenes.map((scene) => (
-            <SceneDisplay key={scene.id} scene={scene} />
+            <SceneDisplay 
+              key={scene.id} 
+              scene={scene}
+              videoUrl={videoUrls[scene.id]}
+              onVideoGenerated={handleVideoGenerated} 
+            />
           ))}
         </div>
       </article>
 
       {isImmersiveMode && (
-          <ImmersiveMode story={story} onClose={() => setIsImmersiveMode(false)} />
+          <ImmersiveMode
+            story={story}
+            onClose={() => setIsImmersiveMode(false)}
+            videoUrls={videoUrls}
+          />
       )}
     </>
   );

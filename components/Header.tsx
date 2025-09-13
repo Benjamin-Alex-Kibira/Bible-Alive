@@ -16,7 +16,7 @@ const Header: React.FC = () => {
           </Link>
           <nav className="flex items-center space-x-6">
             <NavLink 
-              to="/" 
+              to="/stories" 
               className="text-light-parchment hover:text-gold-accent transition-colors duration-300"
               style={({ isActive }) => isActive ? activeLinkStyle : undefined}
             >

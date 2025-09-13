@@ -1,219 +1,193 @@
-
-import React, { useState, useCallback } from 'react';
-import type { BibleVerse, GenerateVideosOperation } from '../types';
-import { getVerse } from '../services/bibleService';
-import { startVideoGeneration, getVideosOperation, generateImage as generateImageSvc } from '../services/geminiService';
+// FIX: Implemented the ExplorerPage to provide a scripture search and visualization interface.
+import React, { useState, useCallback, useEffect } from 'react';
 import ScriptureSearchForm from '../components/ScriptureSearchForm';
+import { getVerse } from '../services/bibleService';
+import { generateImage, generateFunFacts } from '../services/geminiService';
+import type { BibleVerse, FunFact } from '../types';
 import Spinner from '../components/Spinner';
+import FunFactCard from '../components/FunFactCard';
 
 const ExplorerPage: React.FC = () => {
-  const [verse, setVerse] = useState<BibleVerse | null>(null);
-  const [version, setVersion] = useState('KJV');
+  const [verseData, setVerseData] = useState<BibleVerse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
+  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
-  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [imageGenError, setImageGenError] = useState<string | null>(null);
   
-  const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
-  const [generatedVideo, setGeneratedVideo] = useState<string | null>(null);
-  const [videoStatus, setVideoStatus] = useState<string>('');
+  const [selectedVersion, setSelectedVersion] = useState('KJV');
   
-  const handleSearch = async (book: string, chapter: number, verseNum: number) => {
+  // State for fun facts
+  const [funFacts, setFunFacts] = useState<FunFact[]>([]);
+  const [isGeneratingFacts, setIsGeneratingFacts] = useState(false);
+
+  const handleSearch = useCallback(async (book: string, chapter: number, verse: number) => {
     setIsLoading(true);
     setError(null);
-    setVerse(null);
-    setGeneratedImage(null);
-    setGeneratedVideo(null);
+    setVerseData(null);
+    setGeneratedImageUrl(null);
+    setImageGenError(null);
+    setFunFacts([]); // Clear previous fun facts
+    
     try {
-      const result = await getVerse(book, chapter, verseNum, version);
-      if (result) {
-        setVerse(result);
+      const data = await getVerse(book, chapter, verse, selectedVersion);
+      if (data) {
+        setVerseData(data);
       } else {
-        setError('Scripture not found in our current data. Please try another verse.');
+        setError(`Could not find ${book} ${chapter}:${verse} in the ${selectedVersion} version.`);
       }
-    } catch (e) {
-      setError('An error occurred while searching.');
-      console.error(e);
+    } catch (err) {
+      console.error("Error fetching verse:", err);
+      setError("An error occurred while searching for the scripture.");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [selectedVersion]);
 
-  const createGenerationPrompt = (verse: BibleVerse): string => {
-    let basePrompt = `Visualize the following scripture from ${verse.book} ${verse.chapter}:${verse.verse}: "${verse.text}".`;
-    
-    if (verse.contextualMeaning) {
-        basePrompt += `\n\nCRITICAL CONTEXT: The visualization MUST be based on the following original meaning and context, not just the translated text: "${verse.contextualMeaning}".`;
+  // Effect to generate fun facts when verseData changes
+  useEffect(() => {
+    if (verseData) {
+      const fetchFunFacts = async () => {
+        setIsGeneratingFacts(true);
+        setFunFacts([]);
+        try {
+          const facts = await generateFunFacts(verseData);
+          setFunFacts(facts);
+        } catch (err) {
+          console.error("Error generating fun facts:", err);
+          // Fail gracefully without showing a user-facing error.
+        } finally {
+          setIsGeneratingFacts(false);
+        }
+      };
+      fetchFunFacts();
     }
+  }, [verseData]);
 
-    return basePrompt + ` The depiction must be historically and culturally accurate to the time period, deeply reverent, and faithful to the literal meaning. Avoid modern artistic interpretations, anachronisms, or theological symbolism not explicitly present in the text. The goal is a pure, powerful visualization of the scripture as it was written. Style: Cinematic, Epic, Photorealistic. Safe for all audiences. Constraints: no nudity, no graphic violence, no modern anachronisms, no text or logos.`;
-  };
 
   const handleGenerateImage = async () => {
-    if (!verse) return;
+    if (!verseData) return;
+
     setIsGeneratingImage(true);
-    setGeneratedImage(null);
+    setGeneratedImageUrl(null);
+    setImageGenError(null);
+
     try {
-      const prompt = createGenerationPrompt(verse);
-      const imageUrl = await generateImageSvc({
-          id: `${verse.book}-${verse.chapter}-${verse.verse}`,
-          prompt: prompt,
-          aspectRatio: "16:9"
+      const commentaryInsight = verseData.commentary ? `Thematic insights from commentary suggest: "${verseData.commentary.text}"` : '';
+      const contextualPrompt = verseData.contextualMeaning ? ` based on its contextual meaning: "${verseData.contextualMeaning}"` : '';
+      const prompt = `Task: Create a reverent, historically and culturally accurate visual for a Bible verse.
+      Verse: "${verseData.text}" (${verseData.book} ${verseData.chapter}:${verseData.verse}).
+      Critical Context: ${contextualPrompt}.
+      Thematic Insights: ${commentaryInsight}.
+      Artistic Direction: Cinematic digital painting, epic, beautiful, awe-inspiring. Emphasize realism and emotional depth.
+      Strict Constraints: NO modern anachronisms (e.g., modern clothing, architecture). NO text or logos. NO graphic violence. NO nudity. Ensure all figures and settings are appropriate for the ancient Near East/Roman era. The tone must be reverent and faithful to the source material.`;
+      
+      const url = await generateImage({
+        id: `verse-image-${verseData.book}-${verseData.chapter}-${verseData.verse}-${selectedVersion}`,
+        prompt: prompt,
+        aspectRatio: "16:9",
       });
-      setGeneratedImage(imageUrl);
-    } catch(e) {
-        setError("Failed to generate image.");
-        console.error(e);
+      setGeneratedImageUrl(url);
+    } catch (err) {
+      console.error("Failed to generate image for verse:", err);
+      setImageGenError("Failed to generate the image. Please try again.");
     } finally {
-        setIsGeneratingImage(false);
+      setIsGeneratingImage(false);
     }
   };
-
-  const pollVideoOperation = useCallback(async (operation: GenerateVideosOperation) => {
-    try {
-      const op = await getVideosOperation(operation);
-      if (op.done) {
-        setVideoStatus('Video generation complete!');
-        const downloadLink = op.response?.generatedVideos?.[0]?.video?.uri;
-        if (downloadLink) {
-          const finalUrl = process.env.API_KEY ? `${downloadLink}&key=${process.env.API_KEY}` : downloadLink;
-          setGeneratedVideo(finalUrl);
-        } else {
-          setError("Video generation finished, but no video URL was returned.");
-        }
-        setIsGeneratingVideo(false);
-      } else {
-        const progressPercent = op.metadata?.progressPercent;
-        const progress = typeof progressPercent === 'number' ? progressPercent : 0;
-        setVideoStatus(`Generating video... ${progress.toFixed(0)}% complete. This can take a few minutes.`);
-        setTimeout(() => pollVideoOperation(op), 10000); // Poll every 10 seconds
-      }
-    } catch (e) {
-      setError("An error occurred while checking video status.");
-      console.error(e);
-      setIsGeneratingVideo(false);
-    }
-  }, []);
-
-
-  const handleGenerateVideo = async () => {
-    if (!verse) return;
-    setIsGeneratingVideo(true);
-    setGeneratedVideo(null);
-    setError(null);
-    try {
-      const prompt = createGenerationPrompt(verse);
-      setVideoStatus('Starting video generation...');
-      const initialOperation = await startVideoGeneration(prompt);
-      setVideoStatus('Video generation is in progress. Polling for updates...');
-      pollVideoOperation(initialOperation);
-    } catch(e) {
-        setError("Failed to start video generation.");
-        console.error(e);
-        setIsGeneratingVideo(false);
-    }
-  };
-  
-  const isGeneratorBusy = isLoading || isGeneratingVideo || isGeneratingImage;
 
   return (
     <div>
-      <section className="text-center py-12">
+      <section className="text-center pt-8 pb-12">
         <h1 className="text-4xl md:text-5xl font-serif font-extrabold text-white mb-4">
           Scripture Explorer
         </h1>
-        <p className="max-w-3xl mx-auto text-lg text-light-parchment/80 mb-8">
-          Search for a specific verse and bring it to life with AI-powered visual generation.
+        <p className="max-w-3xl mx-auto text-lg text-light-parchment/80">
+          Search for any verse in the Bible, read its text, and visualize its meaning.
         </p>
       </section>
+
+      <ScriptureSearchForm onSearch={handleSearch} disabled={isLoading} />
       
-      <div className="max-w-2xl mx-auto mb-6">
-        <label htmlFor="version-select" className="block text-sm font-medium text-gold-accent mb-1">
-            Bible Version
-        </label>
-        <select
-            id="version-select"
-            value={version}
-            onChange={(e) => setVersion(e.target.value)}
-            disabled={isGeneratorBusy}
-            className="w-full bg-deep-indigo border border-gold-accent/50 text-light-parchment rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-gold-accent disabled:opacity-50"
-        >
-            <option value="KJV">KJV (King James Version)</option>
-            <option value="NIV">NIV (New International Version)</option>
-            <option value="ESV">ESV (English Standard Version)</option>
-            <option value="AMP">AMP (Amplified Bible)</option>
-            <option value="Literal & Contextual">Literal & Contextual (For AI Generation)</option>
-        </select>
-        <p className="text-xs text-light-parchment/60 mt-2">
-            For the most accurate AI visualizations, use the 'Literal & Contextual' version. Other versions are provided for reading.
-        </p>
+      <div className="flex justify-center my-4">
+        <div className="flex items-center space-x-4 p-2 bg-deep-indigo/30 rounded-full">
+          <span className="text-sm font-medium text-gold-accent pl-2">Translation:</span>
+          <select
+            value={selectedVersion}
+            onChange={(e) => setSelectedVersion(e.target.value)}
+            disabled={isLoading}
+            className="bg-deep-indigo border border-gold-accent/50 text-light-parchment rounded-full shadow-sm py-1 px-3 focus:outline-none focus:ring-1 focus:ring-gold-accent disabled:opacity-50"
+          >
+            <option value="KJV">KJV</option>
+            <option value="NIV">NIV</option>
+            <option value="ESV">ESV</option>
+            <option value="AMP">AMP</option>
+            <option value="Literal & Contextual">Literal & Contextual</option>
+          </select>
+        </div>
       </div>
 
-      <ScriptureSearchForm onSearch={handleSearch} disabled={isGeneratorBusy} />
-
-      <div className="mt-12 max-w-4xl mx-auto">
-        {isLoading && <Spinner />}
-        {error && <p className="text-center text-red-400 bg-red-900/20 p-4 rounded-lg">{error}</p>}
-        {verse && (
-          <div className="bg-deep-indigo/50 p-6 md:p-8 rounded-lg shadow-lg border border-gold-accent/20 transition-opacity duration-500 animate-fadeIn">
-            <h2 className="text-2xl font-serif text-gold-accent">{`${verse.book} ${verse.chapter}:${verse.verse}`} <span className="text-lg text-light-parchment/70">({verse.version})</span></h2>
-            <blockquote className="text-xl font-serif italic text-light-parchment/90 mt-4 leading-relaxed border-l-4 border-gold-accent/50 pl-4">
-              "{verse.text}"
+      <div className="max-w-4xl mx-auto mt-10">
+        {isLoading && <div className="flex justify-center py-10"><Spinner /></div>}
+        {error && <p className="text-center text-red-400 font-bold p-4 bg-red-900/20 rounded-md">{error}</p>}
+        
+        {verseData && (
+          <div className="bg-black/20 rounded-lg shadow-lg p-6 md:p-8">
+            <h2 className="text-3xl font-serif text-gold-accent mb-4">
+              {verseData.book} {verseData.chapter}:{verseData.verse}
+              <span className="text-lg text-light-parchment/70 ml-2">({verseData.version})</span>
+            </h2>
+            <blockquote className="text-xl md:text-2xl font-serif italic text-light-parchment/90 leading-relaxed border-l-4 border-gold-accent/40 pl-6">
+              {verseData.text}
             </blockquote>
 
-            {verse.contextualMeaning && (
-                <div className="mt-6 bg-black/20 p-4 rounded-lg border-l-4 border-gold-accent/40">
-                    <h3 className="text-lg font-bold font-sans text-gold-accent">Original Context & Meaning</h3>
-                    <p className="text-md font-sans text-light-parchment/80 mt-2 leading-relaxed">{verse.contextualMeaning}</p>
-                </div>
-            )}
-            
-            {verse.commentary && (
-                <div className="mt-6 bg-black/20 p-4 rounded-lg border-l-4 border-gold-accent/40">
-                    <h3 className="text-lg font-bold font-sans text-gold-accent">Commentary ({verse.commentary.source})</h3>
-                    <p className="text-md font-sans text-light-parchment/80 mt-2 leading-relaxed whitespace-pre-wrap">{verse.commentary.text}</p>
+            {verseData.contextualMeaning && (
+                <div className="mt-6">
+                    <h3 className="text-lg font-bold text-gold-accent/80 mb-2">Contextual Meaning</h3>
+                    <p className="text-light-parchment/80">{verseData.contextualMeaning}</p>
                 </div>
             )}
 
-            <div className="mt-8 flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
-              <button onClick={handleGenerateImage} disabled={isGeneratingImage || isGeneratingVideo} className="flex-1 bg-gold-accent text-deep-indigo font-bold py-3 px-6 rounded-full hover:bg-yellow-300 transition-colors duration-300 disabled:bg-gray-500 disabled:cursor-not-allowed">
-                {isGeneratingImage ? 'Generating...' : 'Generate Image'}
+            {verseData.commentary && (
+                <div className="mt-6 bg-deep-indigo/40 p-4 rounded-md">
+                    <h3 className="text-lg font-bold text-gold-accent/80 mb-2">Commentary from {verseData.commentary.source}</h3>
+                    <p className="text-light-parchment/80 text-sm">{verseData.commentary.text}</p>
+                </div>
+            )}
+
+            <div className="text-center mt-8">
+              <button 
+                onClick={handleGenerateImage} 
+                disabled={isGeneratingImage}
+                className="bg-transparent border-2 border-gold-accent text-gold-accent font-bold py-2 px-6 rounded-full hover:bg-gold-accent hover:text-deep-indigo transition-colors duration-300 disabled:border-gray-500 disabled:text-gray-500 disabled:cursor-not-allowed"
+              >
+                {isGeneratingImage ? 'Visualizing...' : 'Visualize This Verse'}
               </button>
-              <button onClick={handleGenerateVideo} disabled={isGeneratingVideo || isGeneratingImage} className="flex-1 bg-transparent border-2 border-gold-accent text-gold-accent font-bold py-3 px-6 rounded-full hover:bg-gold-accent hover:text-deep-indigo transition-colors duration-300 disabled:border-gray-500 disabled:text-gray-500 disabled:cursor-not-allowed">
-                {isGeneratingVideo ? 'In Progress...' : 'Generate Video'}
-              </button>
+            </div>
+            
+            {isGeneratingImage && <div className="flex justify-center py-10"><Spinner /></div>}
+            {imageGenError && <p className="text-center text-red-400 mt-4">{imageGenError}</p>}
+            
+            {generatedImageUrl && (
+              <div className="mt-8 aspect-[16/9] bg-black/30 rounded-md overflow-hidden">
+                <img src={generatedImageUrl} alt={`Visualization of ${verseData.book} ${verseData.chapter}:${verseData.verse}`} className="w-full h-full object-cover" />
+              </div>
+            )}
+          </div>
+        )}
+
+        {(isGeneratingFacts || funFacts.length > 0) && (
+          <div className="mt-12">
+            <h3 className="text-3xl font-serif text-gold-accent mb-6 text-center">Related Fun Facts</h3>
+            {isGeneratingFacts && <div className="flex justify-center py-10"><Spinner /></div>}
+            <div className="grid grid-cols-1 gap-8">
+              {funFacts.map((fact) => (
+                <FunFactCard key={fact.id} fact={fact} />
+              ))}
             </div>
           </div>
         )}
-        
-        <div className="mt-8">
-            {isGeneratingImage && <div className="text-center"><Spinner /> <p className="mt-2">Generating image...</p></div>}
-            {generatedImage && (
-                <div className="bg-black/20 p-4 rounded-lg animate-fadeIn">
-                    <h3 className="text-xl font-serif text-gold-accent mb-4">Generated Image</h3>
-                    <img src={generatedImage} alt={`AI generation for ${verse?.book} ${verse?.chapter}:${verse?.verse}`} className="w-full h-auto object-contain rounded-md" />
-                </div>
-            )}
-
-            {isGeneratingVideo && <div className="text-center mt-4"><Spinner /> <p className="mt-2 text-gold-accent">{videoStatus}</p></div>}
-            {generatedVideo && (
-                 <div className="bg-black/20 p-4 rounded-lg mt-8 animate-fadeIn">
-                    <h3 className="text-xl font-serif text-gold-accent mb-4">Generated Video</h3>
-                    <video controls src={generatedVideo} className="w-full h-auto rounded-md" />
-                </div>
-            )}
-        </div>
       </div>
-       <style>{`
-          @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-          .animate-fadeIn {
-            animation: fadeIn 0.5s ease-out forwards;
-          }
-        `}</style>
     </div>
   );
 };

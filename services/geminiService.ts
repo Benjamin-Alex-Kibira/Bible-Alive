@@ -1,220 +1,248 @@
+// FIX: Implemented the geminiService to provide AI functionality to the app.
+import { GoogleGenAI, Type } from "@google/genai";
+import type { VisualPrompt, GenerateVideosOperation, BibleVerse, FunFact } from '../types';
 
-import { GoogleGenAI } from "@google/genai";
-import type { StructuredImagePrompt, VisualPrompt, GenerateVideosOperation } from '../types';
-
-// --- Image Generation Template ---
-function formatPrompt(structured: StructuredImagePrompt): string {
-  return `${structured.sceneTitle} — ${structured.verseSummary}. Visualize exactly as the scripture describes, imaginative and reverent. Style: ${structured.style}. Mood: ${structured.mood}. Camera: ${structured.camera}. Lighting: ${structured.lighting}. Composition: ${structured.composition}. Constraints: no modern clothing, no logos, no graphic gore, no sexual content, no modern buildings.`;
+// This check is important for server-side environments or build steps.
+if (!process.env.API_KEY) {
+  // In a real app, you might want to show a more user-friendly error or disable AI features.
+  console.error("API_KEY environment variable is not set. AI features will not work.");
 }
 
-// --- Adapter Interface ---
-interface AiAdapter {
-  generateImage(visualPrompt: VisualPrompt): Promise<string>;
-  startVideoGeneration(prompt: string): Promise<GenerateVideosOperation>;
-  getVideosOperation(operation: GenerateVideosOperation): Promise<GenerateVideosOperation>;
-  generateVerseText(book: string, chapter: number, verse: number, version: string): Promise<string>;
-}
 
-// --- Mock Adapter ---
-class MockAdapter implements AiAdapter {
-  private mockVideoOperations: Record<string, { status: string; calls: number }> = {};
+// Initialize the Google Gemini AI client, using a non-null assertion as we've checked above.
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
 
-  async generateImage(visualPrompt: VisualPrompt): Promise<string> {
-    console.log("Using Mock Adapter for image generation. Prompt:", visualPrompt.prompt);
-    const aspectRatios: { [key: string]: string } = {
-      "16:9": "1280/720",
-      "4:3": "1024/768",
-      "1:1": "1080/1080",
-    };
-    const ratio = aspectRatios[visualPrompt.aspectRatio || "16:9"] || "1280/720";
-    
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    return `https://picsum.photos/${ratio}?random=${Math.random()}`;
-  }
-
-  async startVideoGeneration(prompt: string): Promise<GenerateVideosOperation> {
-    console.log("Using Mock Adapter to start video generation. Prompt:", prompt);
-    await new Promise(resolve => setTimeout(resolve, 500));
-    const operationId = `mock-op-${Date.now()}`;
-    this.mockVideoOperations[operationId] = { status: "PROCESSING", calls: 0 };
-    // FIX: Cast to unknown first because GenerateVideosOperation is not a simple object.
-    return { name: operationId, done: false } as unknown as GenerateVideosOperation;
-  }
-
-  async getVideosOperation(operation: GenerateVideosOperation): Promise<GenerateVideosOperation> {
-    console.log("Using Mock Adapter to check video status.");
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    const opDetails = this.mockVideoOperations[operation.name];
-    if (!opDetails) throw new Error("Mock operation not found");
-
-    opDetails.calls++;
-    if (opDetails.calls < 3) {
-      // FIX: Cast to unknown first to satisfy GenerateVideosOperation type for mock response.
-      return { name: operation.name, done: false, metadata: { state: "PROCESSING", progressPercent: opDetails.calls * 33 } } as unknown as GenerateVideosOperation;
-    } else {
-      // FIX: Cast to unknown first to satisfy GenerateVideosOperation type for mock response.
-      return {
-        name: operation.name,
-        done: true,
-        response: {
-          generatedVideos: [{
-            video: { uri: 'https://storage.googleapis.com/web-dev-assets/video-api-demo/flowers.mp4' }
-          }]
-        }
-      } as unknown as GenerateVideosOperation;
-    }
-  }
-
-  async generateVerseText(book: string, chapter: number, verse: number, version: string): Promise<string> {
-    console.log(`Mock generating verse text for ${book} ${chapter}:${verse}`);
-    await new Promise(resolve => setTimeout(resolve, 200));
-    return `(Mock) And he said unto them, Go ye into all the world, and preach the gospel to every creature. [${book} ${chapter}:${verse} - ${version}]`;
-  }
-}
-
-// --- Gemini Adapter ---
-class GeminiAdapter implements AiAdapter {
-  private ai: GoogleGenAI;
-
-  constructor() {
-    if (!process.env.API_KEY) {
-      throw new Error("API_KEY environment variable not set for GeminiAdapter.");
-    }
-    this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  }
-
-  async generateImage(visualPrompt: VisualPrompt): Promise<string> {
-    console.log("Using Gemini Adapter for image generation.");
+/**
+ * A helper function to retry an async function with exponential backoff.
+ * Useful for handling rate-limiting errors (429).
+ * @param apiCall The async function to call.
+ * @param maxRetries The maximum number of retries.
+ * @param initialDelay The initial delay in ms before the first retry.
+ */
+const withRetry = async <T>(apiCall: () => Promise<T>, maxRetries = 3, initialDelay = 1000): Promise<T> => {
+  let attempt = 0;
+  while (true) { // Loop will be broken by success or non-retriable error
     try {
-      const response = await this.ai.models.generateImages({
-        model: 'imagen-4.0-generate-001',
-        prompt: visualPrompt.prompt,
-        config: {
-          numberOfImages: 1,
-          outputMimeType: 'image/jpeg',
-          aspectRatio: visualPrompt.aspectRatio || "16:9",
-        },
-      });
-
-      const imageBytes = response?.generatedImages?.[0]?.image?.imageBytes;
-
-      if (imageBytes) {
-        return `data:image/jpeg;base64,${imageBytes}`;
-      } else {
-        // Log the full response for debugging purposes and create a more informative error.
-        console.warn("Image generation returned no images. Full API response:", response);
-        
-        // The exact structure for generateImages response's feedback isn't specified in the provided guidelines,
-        // so we'll defensively check for a common pattern from other Gemini APIs.
-        // @ts-ignore - a flexible check for feedback properties.
-        const feedback = response.promptFeedback;
-        const blockReason = feedback?.blockReason;
-        const safetyRatings = feedback?.safetyRatings?.map((r: { category: string; probability: string; }) => `${r.category}: ${r.probability}`).join(', ');
-
-        let errorMessage = "No image generated by Gemini API.";
-        if (blockReason) {
-          errorMessage += ` Reason: ${blockReason}.`;
-        }
-        if (safetyRatings) {
-          errorMessage += ` Safety concerns: [${safetyRatings}].`;
-        }
-        
-        throw new Error(errorMessage);
-      }
-    } catch (error) {
-      console.error("Error generating image with Gemini:", error);
-      return 'https://picsum.photos/1280/720?grayscale';
-    }
-  }
-
-  async startVideoGeneration(prompt: string): Promise<GenerateVideosOperation> {
-    console.log("Using Gemini Adapter to start video generation.");
-    return this.ai.models.generateVideos({
-      model: 'veo-2.0-generate-001',
-      prompt: prompt,
-      config: { numberOfVideos: 1 }
-    });
-  }
-
-  async getVideosOperation(operation: GenerateVideosOperation): Promise<GenerateVideosOperation> {
-    console.log("Using Gemini Adapter to check video status.");
-    return this.ai.operations.getVideosOperation({ operation: operation });
-  }
-
-  async generateVerseText(book: string, chapter: number, verse: number, version: string): Promise<string> {
-    console.log("Using Gemini Adapter for verse text generation.");
-    try {
-      let versionPrompt = "";
-      switch (version) {
-        case "NIV":
-          versionPrompt = "from the New International Version (NIV)";
-          break;
-        case "ESV":
-          versionPrompt = "from the English Standard Version (ESV)";
-          break;
-        case "AMP":
-          versionPrompt = "from the Amplified Bible (AMP)";
-          break;
-        case "Literal & Contextual":
-          versionPrompt = "providing a modern, literal translation from the original languages (Hebrew/Greek)";
-          break;
-        case "KJV":
-        default:
-          versionPrompt = "from the King James Version (KJV)";
-          break;
+      return await apiCall();
+    } catch (error: any) {
+      attempt++;
+      
+      // Attempt to parse the error to find a 429 status code.
+      // The error can be in various formats.
+      let isRateLimitError = false;
+      if (error?.error?.code === 429) { // From the user's log format: {"error": {"code": 429}}
+          isRateLimitError = true;
+      } else if (typeof error?.message === 'string') { // Sometimes it's a stringified JSON
+          try {
+              const parsed = JSON.parse(error.message);
+              if (parsed?.error?.code === 429) {
+                  isRateLimitError = true;
+              }
+          } catch (e) {
+            // Not a JSON string, ignore.
+          }
       }
       
-      const prompt = `Provide the full and exact Bible verse text for ${book} chapter ${chapter} verse ${verse}, ${versionPrompt}. IMPORTANT: Only return the verse text itself. Do not include the verse reference, any introductory phrases like "Here is the verse:", quotation marks, or any other commentary.`;
-      
-      const response = await this.ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: {
-            temperature: 0.1, 
-        }
-      });
-
-      const text = response.text.trim();
-      if (text) {
-        return text;
+      if (isRateLimitError && attempt < maxRetries) {
+        const delay = initialDelay * Math.pow(2, attempt - 1); // Exponential backoff
+        console.warn(`Rate limit exceeded. Retrying in ${delay}ms... (Attempt ${attempt}/${maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, delay));
       } else {
-        throw new Error("No text generated by Gemini API for verse.");
+        // If it's not a rate limit error or we've exhausted retries, re-throw.
+        throw error;
       }
-    } catch (error) {
-      console.error(`Error generating verse text for ${book} ${chapter}:${verse}:`, error);
-      return `[Error fetching verse text from AI for ${book} ${chapter}:${verse}]`;
     }
   }
-}
-
-// --- Service Configuration ---
-const useMock = !process.env.API_KEY; 
-let adapter: AiAdapter;
-
-if (useMock) {
-  console.log("Bible Stories Alive is running in MOCK mode. No real API calls will be made.");
-  adapter = new MockAdapter();
-} else {
-  try {
-    adapter = new GeminiAdapter();
-  } catch (error) {
-    console.error("Failed to initialize Gemini Adapter, falling back to Mock Adapter.", error);
-    adapter = new MockAdapter();
-  }
-}
-
-export const generateImage = (visualPrompt: VisualPrompt): Promise<string> => {
-  return adapter.generateImage(visualPrompt);
 };
 
-export const startVideoGeneration = (prompt: string): Promise<GenerateVideosOperation> => {
-  return adapter.startVideoGeneration(prompt);
-}
 
-export const getVideosOperation = (operation: GenerateVideosOperation): Promise<GenerateVideosOperation> => {
-  return adapter.getVideosOperation(operation);
-}
+/**
+ * A cache to store generated image URLs to avoid re-generating the same image.
+ * The key is a unique identifier from the VisualPrompt.
+ */
+const imageCache = new Map<string, string>();
 
-export const generateVerseText = (book: string, chapter: number, verse: number, version: string): Promise<string> => {
-  return adapter.generateVerseText(book, chapter, verse, version);
+/**
+ * Generates an image based on a visual prompt using the Imagen-4 model.
+ * Caches results and retries on rate limit errors.
+ * @param visualPrompt - The visual prompt object containing prompt text and aspect ratio.
+ * @returns A promise that resolves to a data URL (base64) of the generated image.
+ */
+export const generateImage = async (visualPrompt: VisualPrompt): Promise<string> => {
+  if (imageCache.has(visualPrompt.id)) {
+    return imageCache.get(visualPrompt.id)!;
+  }
+
+  try {
+    const apiCall = () => ai.models.generateImages({
+      model: 'imagen-4.0-generate-001',
+      prompt: visualPrompt.prompt,
+      config: {
+        numberOfImages: 1,
+        outputMimeType: 'image/jpeg',
+        aspectRatio: visualPrompt.aspectRatio || '16:9',
+      },
+    });
+
+    const response = await withRetry(apiCall);
+
+    if (response.generatedImages && response.generatedImages.length > 0) {
+      const base64ImageBytes = response.generatedImages[0].image.imageBytes;
+      const imageUrl = `data:image/jpeg;base64,${base64ImageBytes}`;
+      imageCache.set(visualPrompt.id, imageUrl);
+      return imageUrl;
+    } else {
+      throw new Error("No image was generated by the API.");
+    }
+  } catch (error) {
+    console.error("Error generating image with Gemini API after retries:", error);
+    // Provide a fallback image URL on error
+    const seed = visualPrompt.id || Date.now();
+    const aspectRatioSizing = {
+      "16:9": "800/450",
+      "4:3": "800/600",
+      "1:1": "800/800",
+      "9:16": "450/800",
+      "3:4": "600/800"
+    }[visualPrompt.aspectRatio || "16:9"];
+    return `https://picsum.photos/seed/${seed}/${aspectRatioSizing}`;
+  }
+};
+
+/**
+ * Starts a video generation task using the Veo-2 model.
+ * @param prompt - The text prompt for the video.
+ * @returns A promise that resolves to the initial video generation operation.
+ */
+export const startVideoGeneration = async (prompt: string): Promise<GenerateVideosOperation> => {
+    const apiCall = () => ai.models.generateVideos({
+      model: 'veo-2.0-generate-001',
+      prompt: prompt,
+      config: {
+        numberOfVideos: 1,
+      },
+    });
+    return withRetry(apiCall);
+};
+
+/**
+ * Polls the status of an ongoing video generation operation.
+ * @param operation - The video generation operation to check.
+ * @returns A promise that resolves to the updated operation status.
+ */
+export const getVideosOperation = async (operation: GenerateVideosOperation): Promise<GenerateVideosOperation> => {
+    const apiCall = () => ai.operations.getVideosOperation({ operation: operation });
+    return withRetry(apiCall);
+};
+
+
+/**
+ * Generates the text for a specific Bible verse using Gemini.
+ * This is used to fill in placeholder verses in the mock Bible data.
+ * @param book - The name of the book.
+ * @param chapter - The chapter number.
+ * @param verse - The verse number.
+ * @param version - The Bible version (e.g., KJV, NIV).
+ * @returns A promise that resolves to the generated verse text as a string.
+ */
+export const generateVerseText = async (book: string, chapter: number, verse: number, version: string): Promise<string> => {
+  try {
+    const prompt = `Provide the text for the Bible verse: ${book} chapter ${chapter} verse ${verse}, from the ${version} translation. IMPORTANT: Return ONLY the verse text itself. Do not include the reference, any introductory phrases like "Here is the verse:", or surrounding quotation marks.`;
+    
+    const apiCall = () => ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        // Disable thinking for this simple, low-latency task.
+        thinkingConfig: { thinkingBudget: 0 },
+        // Set a reasonable token limit to prevent overly long responses.
+        maxOutputTokens: 200,
+        temperature: 0.1, // Low temperature for factual recall.
+      },
+    });
+
+    const response = await withRetry(apiCall);
+
+    const text = response.text.trim();
+    // Clean up potential quotation marks that the model might still add
+    return text.replace(/^"|"$/g, '');
+  } catch (error) {
+    console.error(`Error generating verse text for ${book} ${chapter}:${verse} (${version}):`, error);
+    return `[Error fetching text for ${book} ${chapter}:${verse}. Please try again.]`;
+  }
+};
+
+/**
+ * Generates fun facts related to a specific Bible verse using Gemini.
+ * @param verse - The BibleVerse object to generate fun facts about.
+ * @returns A promise that resolves to an array of FunFact objects.
+ */
+export const generateFunFacts = async (verse: BibleVerse): Promise<FunFact[]> => {
+  try {
+    const prompt = `Generate 2-3 interesting, lesser-known fun facts related to the biblical verse: "${verse.book} ${verse.chapter}:${verse.verse} - ${verse.text}". The facts should be about the historical context, cultural details, linguistic nuances, or thematic connections. For each fact, create a question, a short explanation, a related scripture reference, and a compelling visual prompt for an AI image generator.`;
+
+    const apiCall = () => ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            facts: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  question: { type: Type.STRING, description: "The fun fact posed as an intriguing question." },
+                  explanation: { type: Type.STRING, description: "A concise explanation of the fun fact." },
+                  scriptureRef: {
+                    type: Type.OBJECT,
+                    properties: {
+                      book: { type: Type.STRING },
+                      chapter: { type: Type.INTEGER },
+                      verseStart: { type: Type.INTEGER },
+                    },
+                    required: ["book", "chapter", "verseStart"]
+                  },
+                  visualPrompt: {
+                    type: Type.OBJECT,
+                    properties: {
+                      prompt: { type: Type.STRING, description: "A detailed prompt for an AI image generator to visualize the fact." },
+                    },
+                    required: ["prompt"]
+                  },
+                },
+                required: ["question", "explanation", "scriptureRef", "visualPrompt"],
+              },
+            },
+          },
+        },
+      },
+    });
+    
+    const response = await withRetry(apiCall);
+
+    const json = JSON.parse(response.text);
+    if (json && json.facts) {
+      // Map the response to our FunFact type, generating IDs and default aspect ratios.
+      return json.facts.map((fact: any, index: number) => ({
+        ...fact,
+        id: `gen-fact-${verse.book}-${verse.chapter}-${verse.verse}-${index}`,
+        scriptureRef: { // Ensure the reference is complete
+            ...fact.scriptureRef,
+            verseEnd: fact.scriptureRef.verseEnd || undefined
+        },
+        visualPrompt: {
+          ...fact.visualPrompt,
+          id: `gen-fact-vp-${verse.book}-${verse.chapter}-${verse.verse}-${index}`,
+          aspectRatio: "16:9",
+        },
+      }));
+    }
+    return [];
+  } catch (error) {
+    console.error("Error generating fun facts with Gemini API:", error);
+    return []; // Return empty array on error to avoid crashing the UI.
+  }
 };

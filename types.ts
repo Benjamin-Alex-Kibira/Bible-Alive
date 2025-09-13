@@ -55,5 +55,14 @@ export interface BibleVerse {
   };
 }
 
+// FIX: Add FunFact interface to be exported and used across the application.
+export interface FunFact {
+  id: string;
+  question: string;
+  explanation: string;
+  scriptureRef: VerseRef;
+  visualPrompt: VisualPrompt;
+}
+
 // Re-export to avoid breaking changes in geminiService.ts if it uses this alias
 export type GenerateVideosOperation = GenAIVideosOperation;

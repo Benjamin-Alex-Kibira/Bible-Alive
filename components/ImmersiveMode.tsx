@@ -9,6 +9,7 @@ import { XMarkIcon, ChevronLeftIcon, ChevronRightIcon } from './icons';
 interface ImmersiveModeProps {
   story: Story;
   onClose: () => void;
+  videoUrls: Record<string, string>;
 }
 
 const variants = {
@@ -28,7 +29,7 @@ const variants = {
   }),
 };
 
-const ImmersiveMode: React.FC<ImmersiveModeProps> = ({ story, onClose }) => {
+const ImmersiveMode: React.FC<ImmersiveModeProps> = ({ story, onClose, videoUrls }) => {
   const [[page, direction], setPage] = useState([0, 0]);
   const [imageUrls, setImageUrls] = useState<(string | null)[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -60,6 +61,7 @@ const ImmersiveMode: React.FC<ImmersiveModeProps> = ({ story, onClose }) => {
   
   const currentScene = story.scenes[sceneIndex];
   const currentImageUrl = imageUrls[sceneIndex];
+  const currentVideoUrl = videoUrls[currentScene.id];
 
   return (
     <motion.div
@@ -87,15 +89,27 @@ const ImmersiveMode: React.FC<ImmersiveModeProps> = ({ story, onClose }) => {
               opacity: { duration: 0.2 },
             }}
           >
-            {isLoading || !currentImageUrl ? (
+            {isLoading ? (
               <Spinner />
             ) : (
               <>
-                <img
-                  src={currentImageUrl}
-                  alt={currentScene.title}
-                  className="max-w-full max-h-full object-contain"
-                />
+                {currentVideoUrl ? (
+                  <video
+                    key={`${currentScene.id}-video`}
+                    src={currentVideoUrl}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="max-w-full max-h-full object-contain"
+                  />
+                ) : (
+                   currentImageUrl && <img
+                    src={currentImageUrl}
+                    alt={currentScene.title}
+                    className="max-w-full max-h-full object-contain"
+                  />
+                )}
                 <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/90 to-transparent p-8 text-center">
                     <h3 className="text-2xl md:text-4xl font-serif text-gold-accent mb-2">{currentScene.title}</h3>
                     <p className="text-base md:text-xl text-white font-serif italic max-w-4xl mx-auto">{currentScene.narration}</p>
