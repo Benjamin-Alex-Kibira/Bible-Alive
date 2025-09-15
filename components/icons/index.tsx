@@ -25,18 +25,6 @@ export const DevicePhoneMobileIcon: React.FC<{ className?: string }> = ({ classN
     </svg>
 );
 
-export const PlayIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
-        <path fillRule="evenodd" d="M4.5 5.653c0-1.427 1.529-2.33 2.779-1.643l11.54 6.347c1.295.712 1.295 2.573 0 3.286L7.279 20.99c-1.25.687-2.779-.217-2.779-1.643V5.653Z" clipRule="evenodd" />
-    </svg>
-);
-
-export const PauseIcon: React.FC<{ className?: string }> = ({ className }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
-    <path fillRule="evenodd" d="M6.75 5.25a.75.75 0 0 0-.75.75v12a.75.75 0 0 0 .75.75h2.25a.75.75 0 0 0 .75-.75v-12a.75.75 0 0 0-.75-.75H6.75Zm8.25-.75a.75.75 0 0 1 .75.75v12a.75.75 0 0 1-.75.75H12a.75.75 0 0 1-.75-.75v-12a.75.75 0 0 1 .75-.75h2.25Z" clipRule="evenodd" />
-  </svg>
-);
-
 export const BookmarkIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.5 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z" />
