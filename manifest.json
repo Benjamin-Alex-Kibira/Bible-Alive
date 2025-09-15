@@ -1,0 +1,16 @@
+{
+  "short_name": "Bible Alive",
+  "name": "Bible Stories Alive",
+  "description": "A responsive web app that brings Bible stories and scripture to life with vivid imagery, cinematic storytelling, and immersive features.",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192 512x512"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#1a2035",
+  "background_color": "#1a2035"
+}

@@ -170,7 +170,7 @@ const ExplorerPage: React.FC = () => {
             
             {generatedImageUrl && (
               <div className="mt-8 aspect-[16/9] bg-black/30 rounded-md overflow-hidden">
-                <img src={generatedImageUrl} alt={`Visualization of ${verseData.book} ${verseData.chapter}:${verseData.verse}`} className="w-full h-full object-cover" />
+                <img src={generatedImageUrl} alt={`Visualization of ${verseData.book} ${verseData.chapter}:${verseData.verse}`} loading="lazy" className="w-full h-full object-cover" />
               </div>
             )}
           </div>

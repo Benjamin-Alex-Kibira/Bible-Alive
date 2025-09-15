@@ -6,6 +6,7 @@ import Spinner from '../components/Spinner';
 import SceneDisplay from '../components/SceneDisplay';
 import ImmersiveMode from '../components/ImmersiveMode';
 import ScriptureNavigator from '../components/ScriptureNavigator';
+import { BookmarkIcon, BookmarkSolidIcon } from '../components/icons';
 
 const StoryPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -14,8 +15,31 @@ const StoryPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isImmersiveMode, setIsImmersiveMode] = useState<boolean>(false);
   const [videoUrls, setVideoUrls] = useState<Record<string, string>>({});
+  const [isBookmarked, setIsBookmarked] = useState(false);
+
+  const toggleBookmark = useCallback(() => {
+    if (!slug) return;
+    const storedBookmarks = localStorage.getItem('bookmarks');
+    const bookmarks = storedBookmarks ? JSON.parse(storedBookmarks) : [];
+    
+    let newBookmarks;
+    if (bookmarks.includes(slug)) {
+      newBookmarks = bookmarks.filter((s: string) => s !== slug);
+    } else {
+      newBookmarks = [...bookmarks, slug];
+    }
+    
+    localStorage.setItem('bookmarks', JSON.stringify(newBookmarks));
+    setIsBookmarked(prev => !prev);
+  }, [slug]);
 
   useEffect(() => {
+    if (slug) {
+      const storedBookmarks = localStorage.getItem('bookmarks');
+      const bookmarks = storedBookmarks ? JSON.parse(storedBookmarks) : [];
+      setIsBookmarked(bookmarks.includes(slug));
+    }
+
     const fetchStoryData = async () => {
       if (!slug) return;
       setIsLoading(true);
@@ -56,7 +80,7 @@ const StoryPage: React.FC = () => {
     <>
       <article>
         <header className="text-center my-12">
-          <Link to="/" className="text-gold-accent hover:underline mb-4 inline-block">
+          <Link to="/stories" className="text-gold-accent hover:underline mb-4 inline-block">
             &larr; All Stories
           </Link>
           
@@ -68,12 +92,21 @@ const StoryPage: React.FC = () => {
           <p className="text-xl text-light-parchment/80 mt-2 font-serif">
             {story.canonicalRefs.map(ref => `${ref.book} ${ref.chapter}:${ref.verseStart}${ref.verseEnd ? `-${ref.verseEnd}` : ''}`).join(', ')}
           </p>
-          <button
-            onClick={() => setIsImmersiveMode(true)}
-            className="mt-8 bg-transparent border-2 border-gold-accent text-gold-accent font-bold py-3 px-8 rounded-full text-lg hover:bg-gold-accent hover:text-deep-indigo transition-colors duration-300"
-          >
-            Enter Immersive Mode
-          </button>
+          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <button
+              onClick={() => setIsImmersiveMode(true)}
+              className="bg-gold-accent text-deep-indigo font-bold py-3 px-8 rounded-full text-lg hover:bg-yellow-300 transition-colors duration-300"
+            >
+              Enter Immersive Mode
+            </button>
+            <button
+              onClick={toggleBookmark}
+              className="bg-transparent border-2 border-gold-accent text-gold-accent font-bold py-3 px-8 rounded-full text-lg hover:bg-gold-accent hover:text-deep-indigo transition-colors duration-300 flex items-center justify-center gap-2"
+            >
+              {isBookmarked ? <BookmarkSolidIcon className="w-6 h-6"/> : <BookmarkIcon className="w-6 h-6"/>}
+              <span>{isBookmarked ? 'Bookmarked' : 'Bookmark Story'}</span>
+            </button>
+          </div>
         </header>
 
         <div className="max-w-4xl mx-auto">

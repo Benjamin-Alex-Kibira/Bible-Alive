@@ -96,7 +96,7 @@ const SceneDisplay: React.FC<SceneDisplayProps> = ({ scene, videoUrl, onVideoGen
             {isLoading && <Spinner />}
             {imageError && <div className="text-red-400 p-4">{imageError}</div>}
             {!isLoading && imageUrl && (
-              <img src={imageUrl} alt={scene.title} className="w-full h-full object-cover rounded-md" />
+              <img src={imageUrl} alt={scene.title} loading="lazy" className="w-full h-full object-cover rounded-md" />
             )}
             {isGeneratingVideo && (
               <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center rounded-md p-4">

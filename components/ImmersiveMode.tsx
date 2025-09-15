@@ -49,7 +49,7 @@ const ImmersiveMode: React.FC<ImmersiveModeProps> = ({ story, onClose, videoUrls
   const fetchAllImages = useCallback(async () => {
     setIsLoading(true);
     const urls = await Promise.all(
-      story.scenes.map(scene => generateImage(scene.visualPrompt))
+      story.scenes.map(scene => generateImage(scene.visualPrompt).catch(() => null))
     );
     setImageUrls(urls);
     setIsLoading(false);
@@ -107,6 +107,7 @@ const ImmersiveMode: React.FC<ImmersiveModeProps> = ({ story, onClose, videoUrls
                    currentImageUrl && <img
                     src={currentImageUrl}
                     alt={currentScene.title}
+                    loading="lazy"
                     className="max-w-full max-h-full object-contain"
                   />
                 )}

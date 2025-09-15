@@ -51,7 +51,7 @@ const FunFactCard: React.FC<FunFactCardProps> = ({ fact }) => {
         {isLoading && <Spinner />}
         {error && <div className="text-red-400 p-4">{error}</div>}
         {!isLoading && imageUrl && (
-          <img src={imageUrl} alt={fact.question} className="w-full h-full object-cover rounded-md" />
+          <img src={imageUrl} alt={fact.question} loading="lazy" className="w-full h-full object-cover rounded-md" />
         )}
       </div>
 
