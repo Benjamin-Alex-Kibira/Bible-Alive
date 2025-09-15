@@ -1,3 +1,11 @@
+/**
+ * ---------------------------------------------------------
+ *   Project: Bible Stories Alive
+ *   Visionary & Creator: Benjamin Alex K
+ *   © 2025 - All rights reserved
+ *   Unique Signature: BSA-25-UniqueMark-BenjaminAlexK
+ * ---------------------------------------------------------
+ */
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
